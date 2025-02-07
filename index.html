@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CyberTask Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        body {
+            font-family: 'Share Tech Mono', monospace;
+            background: #0a192f;
+            color: #64ffda;
+        }
+        .cyberpunk-border {
+            border: 2px solid #64ffda;
+            box-shadow: 0 0 10px #64ffda;
+        }
+        .task-item:hover {
+            background: rgba(100, 255, 218, 0.1);
+            transform: translateX(5px);
+            transition: all 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="min-h-screen p-4">
+        <!-- Header -->
+        <header class="text-center mb-8">
+            <h1 class="font-['Orbitron'] text-3xl md:text-4xl font-bold text-[#64ffda] mb-2">CyberTask Manager</h1>
+            <p class="text-[#8892b0]">Project Management System</p>
+        </header>
+
+        <!-- Main Content -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Team Members Section -->
+            <div class="cyberpunk-border rounded-lg p-4">
+                <h2 class="font-['Orbitron'] text-xl mb-4">Team Members</h2>
+                <div class="space-y-2" id="teamList">
+                    <!-- Team members will be added here -->
+                </div>
+                <form onsubmit="addTeamMember(event)" class="mt-4">
+                    <input type="text" id="memberName" placeholder="Member Name" class="w-full bg-[#172a45] border border-[#64ffda] rounded p-2 mb-2">
+                    <button type="submit" class="w-full bg-[#64ffda] text-[#0a192f] rounded p-2 hover:bg-[#4cd8b2]">Add Member</button>
+                </form>
+            </div>
+
+            <!-- Tasks Section -->
+            <div class="cyberpunk-border rounded-lg p-4">
+                <h2 class="font-['Orbitron'] text-xl mb-4">Weekly Tasks</h2>
+                <div class="space-y-2" id="taskList">
+                    <!-- Tasks will be added here -->
+                </div>
+                <form onsubmit="addTask(event)" class="mt-4">
+                    <input type="text" id="taskName" placeholder="Task Name" class="w-full bg-[#172a45] border border-[#64ffda] rounded p-2 mb-2">
+                    <select id="assignee" class="w-full bg-[#172a45] border border-[#64ffda] rounded p-2 mb-2">
+                        <option value="">Select Assignee</option>
+                    </select>
+                    <button type="submit" class="w-full bg-[#64ffda] text-[#0a192f] rounded p-2 hover:bg-[#4cd8b2]">Add Task</button>
+                </form>
+            </div>
+
+            <!-- Project Checklist -->
+            <div class="cyberpunk-border rounded-lg p-4">
+                <h2 class="font-['Orbitron'] text-xl mb-4">Project Checklist</h2>
+                <div class="space-y-2" id="checklistItems">
+                    <!-- Checklist items will be added here -->
+                </div>
+                <form onsubmit="addChecklistItem(event)" class="mt-4">
+                    <input type="text" id="checklistItem" placeholder="Checklist Item" class="w-full bg-[#172a45] border border-[#64ffda] rounded p-2 mb-2">
+                    <button type="submit" class="w-full bg-[#64ffda] text-[#0a192f] rounded p-2 hover:bg-[#4cd8b2]">Add Item</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize data storage
+        let teamMembers = JSON.parse(localStorage.getItem('teamMembers')) || [];
+        let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+        let checklist = JSON.parse(localStorage.getItem('checklist')) || [];
+
+        // Render functions
+        function renderTeamMembers() {
+            const teamList = document.getElementById('teamList');
+            const assigneeSelect = document.getElementById('assignee');
+            
+            teamList.innerHTML = teamMembers.map(member => `
+                <div class="task-item flex justify-between items-center p-2 rounded">
+                    <span>${member}</span>
+                    <button onclick="removeMember('${member}')" class="text-red-500"><i class="bi bi-trash"></i></button>
+                </div>
+            `).join('');
+
+            assigneeSelect.innerHTML = `
+                <option value="">Select Assignee</option>
+                ${teamMembers.map(member => `<option value="${member}">${member}</option>`).join('')}
+            `;
+        }
+
+        function renderTasks() {
+            const taskList = document.getElementById('taskList');
+            taskList.innerHTML = tasks.map(task => `
+                <div class="task-item flex justify-between items-center p-2 rounded">
+                    <div>
+                        <span class="mr-2">${task.name}</span>
+                        <span class="text-sm text-[#8892b0]">Assigned to: ${task.assignee}</span>
+                    </div>
+                    <button onclick="removeTask('${task.name}')" class="text-red-500"><i class="bi bi-trash"></i></button>
+                </div>
+            `).join('');
+        }
+
+        function renderChecklist() {
+            const checklistDiv = document.getElementById('checklistItems');
+            checklistDiv.innerHTML = checklist.map(item => `
+                <div class="task-item flex justify-between items-center p-2 rounded">
+                    <div class="flex items-center">
+                        <input type="checkbox" ${item.completed ? 'checked' : ''} 
+                               onchange="toggleChecklistItem('${item.text}')"
+                               class="mr-2">
+                        <span class="${item.completed ? 'line-through text-[#8892b0]' : ''}">${item.text}</span>
+                    </div>
+                    <button onclick="removeChecklistItem('${item.text}')" class="text-red-500"><i class="bi bi-trash"></i></button>
+                </div>
+            `).join('');
+        }
+
+        // Event handlers
+        function addTeamMember(event) {
+            event.preventDefault();
+            const input = document.getElementById('memberName');
+            if (input.value.trim()) {
+                teamMembers.push(input.value.trim());
+                localStorage.setItem('teamMembers', JSON.stringify(teamMembers));
+                input.value = '';
+                renderTeamMembers();
+            }
+        }
+
+        function addTask(event) {
+            event.preventDefault();
+            const nameInput = document.getElementById('taskName');
+            const assigneeInput = document.getElementById('assignee');
+            if (nameInput.value.trim() && assigneeInput.value) {
+                tasks.push({
+                    name: nameInput.value.trim(),
+                    assignee: assigneeInput.value
+                });
+                localStorage.setItem('tasks', JSON.stringify(tasks));
+                nameInput.value = '';
+                assigneeInput.value = '';
+                renderTasks();
+            }
+        }
+
+        function addChecklistItem(event) {
+            event.preventDefault();
+            const input = document.getElementById('checklistItem');
+            if (input.value.trim()) {
+                checklist.push({
+                    text: input.value.trim(),
+                    completed: false
+                });
+                localStorage.setItem('checklist', JSON.stringify(checklist));
+                input.value = '';
+                renderChecklist();
+            }
+        }
+
+        function removeMember(member) {
+            teamMembers = teamMembers.filter(m => m !== member);
+            localStorage.setItem('teamMembers', JSON.stringify(teamMembers));
+            renderTeamMembers();
+        }
+
+        function removeTask(taskName) {
+            tasks = tasks.filter(t => t.name !== taskName);
+            localStorage.setItem('tasks', JSON.stringify(tasks));
+            renderTasks();
+        }
+
+        function removeChecklistItem(text) {
+            checklist = checklist.filter(item => item.text !== text);
+            localStorage.setItem('checklist', JSON.stringify(checklist));
+            renderChecklist();
+        }
+
+        function toggleChecklistItem(text) {
+            checklist = checklist.map(item => 
+                item.text === text ? {...item, completed: !item.completed} : item
+            );
+            localStorage.setItem('checklist', JSON.stringify(checklist));
+            renderChecklist();
+        }
+
+        // Initial render
+        renderTeamMembers();
+        renderTasks();
+        renderChecklist();
+    </script>
+<script>document.body.addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); return }, { passive: false })</script>
+	</body>
+</html>
